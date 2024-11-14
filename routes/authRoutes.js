@@ -3,7 +3,6 @@ import express from "express";
 import bcrypt from "bcryptjs";
 import multer from "multer";
 import jwt from "jsonwebtoken";
-import nodemailer from "nodemailer";
 import User from "../models/User.js";
 import authenticateToken from "../middleware/authenticateToken.js";
 
