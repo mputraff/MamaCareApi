@@ -6,7 +6,6 @@ import jwt from "jsonwebtoken";
 import User from "../models/User.js";
 import authenticateToken from "../middleware/authenticateToken.js";
 
-
 const router = express.Router();
 const upload = multer({
   limits: {
@@ -27,54 +26,15 @@ router.post("/register", async (req, res) => {
   
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
-    // const otp = Math.floor(1000 + Math.random() * 9000); // 6-digit OTP
-    // const otpExpires = new Date(Date.now() + 10 * 60 * 1000);
 
     const user = new User({
       name,
       email,
       password: hashedPassword,
-    //   otp,
-    //   otpExpires,
+ 
     });
 
     await user.save();
-
-    // const transporter = nodemailer.createTransport({
-    //   host: "mail.aicade.my.id",
-    //   port: 465,
-    //   secure: true,
-    //   auth: {
-    //     user: process.env.EMAIL_USER,
-    //     pass: process.env.PASS_USER,
-    //   },
-    //   debug: true, // Add this line for detailed logging
-    //   logger: true,
-    // });
-
-    // const htmlContent = `
-    //   <div style="font-family: Arial, sans-serif; color: #333;">
-    //     <div style="background-color: #f7f7f7; padding: 20px; text-align: center;">
-    //       <img src="../img/LogoAIcademy.png" alt="Loket Logo" style="width: 150px; height: auto;">
-    //     </div>
-    //     <div style="padding: 20px; border: 1px solid #ddd; border-radius: 5px; margin-top: 10px;">
-    //       <p>Hi ${name},</p>
-    //       <p>Tinggal selangkah lagi untuk menyelesaikan proses, mohon konfirmasi dengan memasukkan kode OTP di bawah ini.</p>
-    //       <div style="text-align: center; font-size: 24px; font-weight: bold; padding: 20px; background-color: #f1f1f1; border-radius: 5px;">
-    //         ${otp}
-    //       </div>
-    //       <p style="color: #666;">Kode ini hanya berlaku selama 10 menit. Jangan pernah membagikan kode OTP kepada siapa pun!</p>
-    //       <p>Jika ada pertanyaan atau membutuhkan bantuan, silakan hubungi call center kami di +62 821-1723-6590 atau melalui email di <a href="cs@aicade.my.id" style="color: #1a73e8;">cs@aicade.my.id</a>.</p>
-    //     </div>
-    //   </div>
-    // `;
-
-    // await transporter.sendMail({
-    //   from: process.env.EMAIL_USER,
-    //   to: email,
-    //   subject: "Welcome to AIcademy",
-    //   html: htmlContent,
-    // });
 
     res.status(201).json({
       status: "success",
@@ -113,13 +73,12 @@ router.post("/login", async (req, res) => {
         data: {
           id: user._id,
           name: user.name,
-          email: user.email,
-          password: user.password,
+          email: user.email,    
           createdAt: user.createdAt,
-          updateAt: user.updateAt,
+          updatedAt: user.updatedAt,
         },
       });
-    } else {
+    } else {  
       res.status(401).json({ error: "Invalid credentials" });
     }
   } catch (error) {
@@ -163,34 +122,5 @@ router.patch(
     }
   }
 );
-
-
-// router.post("/verify-otp", async (req, res) => {
-//   const { email, otp } = req.body;
-//   try {
-//     // Find the user by email
-//     const user = await User.findOne({ email });
-
-//     if (!user) {
-//       return res.status(400).json({ error: "User not found" });
-//     }
-
-//     if (user.otp !== otp || user.otpExpires < Date.now()) {
-//       return res.status(400).json({ error: "Invalid or expired OTP" });
-//     }
-
-//     // Mark the user as verified
-//     user.isVerified = true;
-//     user.otp = null; // Clear OTP
-//     user.otpExpires = null; // Clear OTP expiry
-   
-//     await user.save();
-
-//     res.status(200).json({ message: "OTP verified successfully" });
-//   } catch (error) {
-//     console.error("Error during OTP verification:", error);
-//     res.status(500).json({ error: "Error verifying OTP" });
-//   }
-// });
 
 export default router;
