@@ -5,6 +5,9 @@ import multer from "multer";
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
 import authenticateToken from "../middleware/authenticateToken.js";
+import dotenv from "dotenv";
+dotenv.config();
+import { Storage } from "@google-cloud/storage";
 
 const router = express.Router();
 const upload = multer({
@@ -20,10 +23,19 @@ const upload = multer({
   },
 });
 
+const googleCredentials = JSON.parse(
+  process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON
+);
+
+const storage = new Storage({
+  credentials: googleCredentials,
+});
+
+const bucket = storage.bucket(process.env.GCLOUD_STORAGE_BUCKET);
 
 router.post("/register", async (req, res) => {
   const { name, email, password } = req.body;
-  
+
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -31,15 +43,13 @@ router.post("/register", async (req, res) => {
       name,
       email,
       password: hashedPassword,
- 
     });
 
     await user.save();
 
     res.status(201).json({
       status: "success",
-      message:
-        "User registered successfully",
+      message: "User registered successfully",
       data: {
         id: user._id, // Mengakses _id setelah user disimpan
         name: user.name,
@@ -53,7 +63,6 @@ router.post("/register", async (req, res) => {
     res.status(500).json({ error: "Error registering user" });
   }
 });
-
 
 router.post("/login", async (req, res) => {
   const { email, password } = req.body;
@@ -73,12 +82,13 @@ router.post("/login", async (req, res) => {
         data: {
           id: user._id,
           name: user.name,
-          email: user.email,    
+          email: user.email,
           createdAt: user.createdAt,
           updatedAt: user.updatedAt,
+          profilePicture: user.profilePicture,
         },
       });
-    } else {  
+    } else {
       res.status(401).json({ error: "Invalid credentials" });
     }
   } catch (error) {
@@ -86,7 +96,6 @@ router.post("/login", async (req, res) => {
     res.status(500).json({ error: "Error logging in" });
   }
 });
-
 
 router.patch(
   "/edit-profile",
@@ -97,27 +106,67 @@ router.patch(
     try {
       const user = await User.findById(req.user.id);
       if (!user) {
-        console.log("user tidak ditemukan");
+        console.log("User not found");
         return res.status(404).json({ error: "User not found" });
       }
-      console.log("User ditemukan", user);
+      console.log("User found", user);
 
-      // Update nama, email, dan password jika diberikan
-      if (name) user.name = name;
-      if (email) user.email = email;
-      if (password) user.password = await bcrypt.hash(password, 10);
+      // Flag untuk mengecek apakah ada perubahan
+      let isUpdated = false;
 
-      // Jika ada file foto profil, simpan ke database
-      if (req.file) {
-        user.profilePicture = req.file.buffer;
-        console.log("Foto profil diperbarui.");
+      // Update name, email, and password if provided
+      if (name) {
+        user.name = name;
+        isUpdated = true;
+      }
+      if (email) {
+        user.email = email;
+        isUpdated = true;
+      }
+      if (password) {
+        user.password = await bcrypt.hash(password, 10);
+        isUpdated = true;
       }
 
-      await user.save();
-      console.log("Profil user berhasil diperbarui.");
-      res.json({ message: "User profile updated successfully" });
+      // If there's a profile picture, upload it to Google Cloud Storage
+      if (req.file) {
+        const blob = bucket.file(
+          `profilePictures/${Date.now()}_${req.file.originalname}`
+        );
+        const blobStream = blob.createWriteStream({
+          resumable: false,
+          contentType: req.file.mimetype,
+        });
+
+        blobStream.on("error", (err) => {
+          console.error("Error uploading file:", err);
+          return res.status(500).json({ error: "Error uploading file" });
+        });
+
+        blobStream.on("finish", async () => {
+          const publicUrl = `https://storage.googleapis.com/${bucket.name}/${blob.name}`;
+          user.profilePicture = publicUrl; // Save the URL in the database
+          console.log("Profile picture updated.");
+          await user.save();
+          console.log("User profile updated successfully.");
+          res.json({
+            message: "User profile updated successfully",
+            profilePicture: publicUrl,
+          });
+        });
+
+        blobStream.end(req.file.buffer); // End the stream
+      } else if (isUpdated) {
+        // Jika ada perubahan tetapi tidak ada foto yang diupload
+        await user.save();
+        console.log("User profile updated successfully without new picture.");
+        res.json({ message: "User profile updated successfully" });
+      } else {
+        // Jika tidak ada perubahan sama sekali
+        res.json({ message: "No changes made to the profile." });
+      }
     } catch (error) {
-      console.log("Error saat memperbarui .", error);
+      console.log("Error updating profile:", error);
       res.status(500).json({ error: "Error updating profile" });
     }
   }
