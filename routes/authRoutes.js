@@ -151,7 +151,13 @@ router.patch(
           console.log("User profile updated successfully.");
           res.json({
             message: "User profile updated successfully",
-            profilePicture: publicUrl,
+            data: {
+              name: user.name,
+              email: user.email,
+              profilePicture: publicUrl,
+              createdAt: user.createdAt,
+              updatedAt: user.updatedAt,
+            }
           });
         });
 
