@@ -16,7 +16,9 @@ const upload = multer({
   },
 
   fileFilter(req, file, cb) {
+    console.log("File upload attempt:", file);
     if (!file.mimetype.startsWith("image/")) {
+      console.log("Invalid file type:", file.mimetype)
       return cb(new Error("Please upload an image file"));
     }
     cb(null, true);
