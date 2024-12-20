@@ -32,23 +32,20 @@ const server = createServer(app);
 
 const io = new Server(server, {
   cors: {
-    origin: "*", // Ganti dengan domain frontend Anda untuk keamanan
+    origin: "*",
+    methods: ["GET", "POST"], 
   },
 });
 
 io.on("connection", (socket) => {
-  console.log("User connected: " + socket.id);
+  console.log("A user connected: " + socket.id);
 
-  // Event untuk menerima pesan dari client
-  socket.on("sendMessage", (data) => {
-    console.log("Message received: ", data);
-
-    // Broadcast pesan ke semua client
-    io.emit("receiveMessage", data);
+  socket.on("newMessage", (data) => {
+    io.emit("updateMessages", data);
   });
 
   socket.on("disconnect", () => {
-    console.log("User disconnected: " + socket.id);
+    console.log("A user disconnected: " + socket.id);
   });
 });
 
@@ -64,6 +61,7 @@ app.use((req, res, next) => {
     return res.sendStatus(200);
   }
   
+  req.io  = io;
   next();
 });
 

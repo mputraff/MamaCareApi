@@ -183,21 +183,31 @@ router.patch(
 );
 
 router.post("/send-message", async (req, res) => {
-  const { senderId, receiverId, message } = req.body;
+  const { senderId, message } = req.body;
 
   try {
     const newMessage = new Message({
       sender: senderId,
-      receiver: receiverId || null, // null untuk pesan global
+      receiver: null, // null untuk pesan global
       message,
     });
 
     await newMessage.save();
-    res.status(201).json({ message: "Message sent successfully", newMessage });
+
+    // Emit pesan baru ke semua client
+    req.io.emit("updateMessages", {
+      content: newMessage.message,
+      senderName: newMessage.sender.name,
+      senderProfilePicture: newMessage.sender.profilePicture,
+      timestamp: newMessage.createdAt,
+    });
+
+    res.status(201).json({ message: "Message sent successfully" });
   } catch (err) {
     res.status(500).json({ error: "Failed to send message", details: err });
   }
 });
+
 
 router.get("/get-messages", async (req, res) => {
   try {
