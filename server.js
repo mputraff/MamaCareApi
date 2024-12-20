@@ -3,6 +3,8 @@ import mongoose from "mongoose";
 import dotenv from "dotenv";
 import authRoutes from "./routes/authRoutes.js";
 import cors from "cors";
+import { createServer } from "http";
+import { Server } from "socket.io";
 
 dotenv.config();
 
@@ -25,6 +27,30 @@ const connectDB = async () => {
     process.exit(1);
   }
 };
+
+const server = createServer(app);
+
+const io = new Server(server, {
+  cors: {
+    origin: "*", // Ganti dengan domain frontend Anda untuk keamanan
+  },
+});
+
+io.on("connection", (socket) => {
+  console.log("User connected: " + socket.id);
+
+  // Event untuk menerima pesan dari client
+  socket.on("sendMessage", (data) => {
+    console.log("Message received: ", data);
+
+    // Broadcast pesan ke semua client
+    io.emit("receiveMessage", data);
+  });
+
+  socket.on("disconnect", () => {
+    console.log("User disconnected: " + socket.id);
+  });
+});
 
 // Middleware CORS yang komprehensif
 app.use((req, res, next) => {

@@ -4,10 +4,12 @@ import bcrypt from "bcryptjs";
 import multer from "multer";
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
+import Message from "../models/Message.js";
 import authenticateToken from "../middleware/authenticateToken.js";
 import dotenv from "dotenv";
 dotenv.config();
 import { Storage } from "@google-cloud/storage";
+
 
 const router = express.Router();
 const upload = multer({
@@ -179,5 +181,31 @@ router.patch(
     }
   }
 );
+
+router.post("/send-message", async (req, res) => {
+  const { senderId, receiverId, message } = req.body;
+
+  try {
+    const newMessage = new Message({
+      sender: senderId,
+      receiver: receiverId || null, // null untuk pesan global
+      message,
+    });
+
+    await newMessage.save();
+    res.status(201).json({ message: "Message sent successfully", newMessage });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to send message", details: err });
+  }
+});
+
+router.get("/get-messages", async (req, res) => {
+  try {
+    const messages = await Message.find().populate("sender", "name photo"); // Populate untuk mendapatkan data user
+    res.status(200).json(messages);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to get messages", details: err });
+  }
+});
 
 export default router;
